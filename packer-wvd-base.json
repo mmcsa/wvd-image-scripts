@@ -1,0 +1,68 @@
+{
+  "variables": {
+    "client_id": "{{env `ARM_CLIENT_ID`}}",
+    "client_secret": "{{env `ARM_CLIENT_SECRET`}}",
+    "subscription_id": "{{env `ARM_SUBSCRIPTION_ID`}}"
+  },
+  "builders": [{
+    "type": "azure-arm",
+
+    "client_id": "{{user `client_id`}}",
+    "client_secret": "{{user `client_secret`}}",
+    "subscription_id": "{{user `subscription_id`}}",
+
+    "managed_image_resource_group_name": "packertest",
+    "managed_image_name": "MyWindowsOSImage",
+
+    "os_type": "Windows",
+    "image_publisher": "MicrosoftWindowsServer",
+    "image_offer": "WindowsServer",
+    "image_sku": "2012-R2-Datacenter",
+
+    "communicator": "winrm",
+    "winrm_use_ssl": "true",
+    "winrm_insecure": "true",
+    "winrm_timeout": "3m",
+    "winrm_username": "packer",
+
+    "location": "South Central US",
+    "vm_size": "Standard_DS2_v2"
+  }],
+  "provisioners": [{
+    "type": "powershell",
+      "inline": [
+        " # NOTE: the following *3* lines are only needed if the you have installed the Guest Agent.",
+        "  while ((Get-Service RdAgent).Status -ne 'Running') { Start-Sleep -s 5 }",
+        "  while ((Get-Service WindowsAzureTelemetryService).Status -ne 'Running') { Start-Sleep -s 5 }",
+        "  while ((Get-Service WindowsAzureGuestAgent).Status -ne 'Running') { Start-Sleep -s 5 }",
+        "reg add HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU /v NoAutoUpdate /t REG_DWORD /d 1 /f",
+        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name \"PagingFiles\" -Value \"D:\\pagefile.sys\" -Type MultiString -Force",
+        
+        " # Enter the following commands into the registry editor to fix 5k resolution support",
+        "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v MaxMonitors /t REG_DWORD /d 4 /f",
+        "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v MaxXResolution /t REG_DWORD /d 5120 /f",
+        "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v MaxYResolution /t REG_DWORD /d 2880 /f",
+        "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v MaxYResolution /t REG_DWORD /d 2880 /f",
+        "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp\" /v MaxYResolution /t REG_DWORD /d 2880 /f",
+        "reg add \"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\rdp-sxs\" /v MaxYResolution /t REG_DWORD /d 2880 /f",
+        
+        "reg add \"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services\" /v fEnableTimeZoneRedirection /t REG_DWORD /d 1 /f",
+        "reg add \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy\" /v 01 /t REG_DWORD /d 0 /f",
+        "netsh winhttp reset proxy",
+        "Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation\" -name \"RealTimeIsUniversal\" -Value 1 -Type DWord -force",
+        "Set-Service -Name w32time -StartupType Automatic",
+        "powercfg /setactive SCHEME_MIN",
+        
+        "Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment\" -name \"TEMP\" -Value \"%SystemRoot%\\TEMP\" -Type ExpandString -force",
+        "Set-ItemProperty -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment\" -name \"TMP\" -Value \"%SystemRoot%\\TEMP\" -Type ExpandString -force",
+
+        "Set-Service -Name dhcp -StartupType Automatic",
+        "Set-Service -Name IKEEXT -StartupType Automatic"
+
+
+        "if( Test-Path $Env:SystemRoot\\windows\\system32\\Sysprep\\unattend.xml ){ rm $Env:SystemRoot\\windows\\system32\\Sysprep\\unattend.xml -Force}",
+        "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /quiet /quit /mode:vm",
+        "while($true) { $imageState = Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State | Select ImageState; Write-Output $imageState.ImageState; if($imageState.ImageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { Start-Sleep -s 10 } else { break } }"
+    ]
+  }]
+}
