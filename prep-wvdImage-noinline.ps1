@@ -8,7 +8,7 @@
 # https://docs.microsoft.com/en-us/azure/virtual-desktop/install-office-on-wvd-master-image
 
 
-Set-ExecutionPolicy -ExecutionPolicy Unrestricted
+#Set-ExecutionPolicy -ExecutionPolicy Unrestricted
 $ErrorActionPreference = 'Continue'
 
 #Install-Module -Name PowerShellGet -Repository PSGallery -Force -ErrorAction Stop
