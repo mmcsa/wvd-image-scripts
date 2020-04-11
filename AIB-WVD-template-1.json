@@ -120,7 +120,7 @@
                         "type": "PowerShell",
                         "name": "CreateBuildPath",
                         "scriptUri": "https://raw.githubusercontent.com/mmcsa/wvd-image-scripts/master/prep-wvdImage-noinline.ps1",
-                        "runElevated": "true"
+                        "runElevated": true
                     },
                         
                     {
